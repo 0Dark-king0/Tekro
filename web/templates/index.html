@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="refresh" content="15">
+  <title>تكرو</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><strong>🎵 تكرو</strong><span class="muted"> لوحة التحكم</span></div>
+    <a href="/logout">تسجيل الخروج</a>
+  </header>
+
+  <main class="container">
+    <section class="card hero">
+      <div>
+        <div class="eyebrow">قيد التشغيل الآن</div>
+        {% if current %}
+          <h2>{{ current.display_name }}</h2>
+          <p class="muted">{{ "🎤 فيها كلمات متزامنة" if current.lyrics_path else "بدون كلمات" }} · {{ "%.0f"|format(elapsed) }} ثانية · {{ "⏸️ متوقفة" if is_paused else "▶️ تشتغل" }}</p>
+        {% else %}
+          <h2>ما فيه شي يشتغل</h2>
+          <p class="muted">ارفع مقطوعة، بعدين اختر روم صوتي عشان تبدأ.</p>
+        {% endif %}
+      </div>
+      <div class="actions">
+        <form method="post" action="/pause"><button>⏸ إيقاف مؤقت</button></form>
+        <form method="post" action="/resume"><button>▶ استكمال</button></form>
+        <form method="post" action="/skip"><button>⏭ تخطي</button></form>
+        <form method="post" action="/stop"><button class="danger">⏹ إيقاف كامل</button></form>
+        <form method="post" action="/disconnect"><button class="ghost">قطع الاتصال</button></form>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <div class="card">
+        <h2>الصوت</h2>
+        <form method="post" action="/volume" class="stack">
+          <label>المستوى: {{ volume }}%
+            <input type="range" name="percent" min="0" max="150" value="{{ volume }}">
+          </label>
+          <button type="submit">ضبط الصوت</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>التكرار</h2>
+        <p class="muted">الوضع الحالي: <strong>{{ {"off": "متوقف", "track": "الأغنية الحالية", "queue": "القائمة كاملة"}[loop_mode] }}</strong></p>
+        <form method="post" action="/loop"><button>🔁 تبديل وضع التكرار</button></form>
+      </div>
+    </section>
+
+    {% if queue %}
+    <section class="card">
+      <h2>القائمة ({{ queue|length }})</h2>
+      <div class="list">
+        {% for t in queue %}
+        <article class="track"><div class="track-main"><div class="icon">🎵</div><div><strong>{{ t.display_name }}</strong></div></div></article>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="grid two">
+      <div class="card">
+        <h2>رفع مقطوعة</h2>
+        <form method="post" action="/upload" enctype="multipart/form-data" class="stack">
+          <label>ملف صوتي<input type="file" name="audio" accept="audio/*" required></label>
+          <label>كلمات LRC (اختياري)<input type="file" name="lyrics" accept=".lrc"></label>
+          <button type="submit">＋ إضافة للمكتبة</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>روم التشغيل الافتراضي</h2>
+        <form id="settingsForm" class="stack">
+          <label>الروم الصوتي
+            <select id="voiceId">
+              <option value="">— اختر روم —</option>
+              {% for cid, cname in voice_channels %}
+              <option value="{{ cid }}" {{ "selected" if cid|string == default_voice_id else "" }}>{{ cname }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>قناة الكلمات النصية
+            <select id="textId">
+              <option value="">— نفس روم الصوت (افتراضي) —</option>
+              {% for cid, cname in text_channels %}
+              <option value="{{ cid }}" {{ "selected" if cid|string == default_text_id else "" }}>#{{ cname }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <p class="muted small">يُحفظ هذا الاختيار بمتصفحك فقط، ويُستخدم عند الضغط على "تشغيل" من المكتبة تحت.</p>
+        </form>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head"><h2>المكتبة ({{ tracks|length }})</h2></div>
+      {% if tracks %}
+        <div class="list">
+          {% for track in tracks %}
+          <article class="track">
+            <div class="track-main">
+              <div class="icon">🎵</div>
+              <div><strong>{{ track.display_name }}</strong><div class="muted small">{{ track.path.suffix|upper }} · {{ "كلمات ✅" if track.lyrics_path else "بدون كلمات" }}</div></div>
+            </div>
+            <div class="actions">
+              <form method="post" action="/play/{{ track.stem | urlencode }}" onsubmit="return injectIds(this)">
+                <input type="hidden" name="voice_channel_id">
+                <input type="hidden" name="text_channel_id">
+                <button>▶ تشغيل / إضافة للقائمة</button>
+              </form>
+              <form method="post" action="/delete/{{ track.stem | urlencode }}" onsubmit="return confirm('حذف هذي المقطوعة وملف كلماتها؟')"><button class="danger ghost">حذف</button></form>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">المكتبة فارغة حالياً.</div>
+      {% endif %}
+    </section>
+  </main>
+
+<script>
+function loadIds(){
+  const savedVoice = localStorage.getItem('voiceId');
+  const savedText = localStorage.getItem('textId');
+  if (savedVoice) document.getElementById('voiceId').value = savedVoice;
+  if (savedText) document.getElementById('textId').value = savedText;
+}
+function saveIds(){
+  localStorage.setItem('voiceId', document.getElementById('voiceId').value.trim());
+  localStorage.setItem('textId', document.getElementById('textId').value.trim());
+}
+function injectIds(form){
+  saveIds();
+  const voiceId = document.getElementById('voiceId').value.trim();
+  if (!voiceId) { alert('اختر روم صوتي أول من قسم "روم التشغيل الافتراضي".'); return false; }
+  form.voice_channel_id.value = voiceId;
+  form.text_channel_id.value = document.getElementById('textId').value.trim();
+  return true;
+}
+window.addEventListener('load', loadIds);
+document.addEventListener('change', e => { if(e.target.id === 'voiceId' || e.target.id === 'textId') saveIds(); });
+</script>
+</body>
+</html>

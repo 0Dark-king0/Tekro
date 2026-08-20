@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: tekro
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: WEB_PASSWORD
+        sync: false
+      - key: DISCORD_GUILD_ID
+        sync: false
+      - key: DEFAULT_VOICE_CHANNEL_ID
+        sync: false
+      - key: DEFAULT_TEXT_CHANNEL_ID
+        sync: false
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000

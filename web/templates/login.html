@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>تكرو - تسجيل الدخول</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="card narrow">
+    <h1 style="font-size:28px;background:linear-gradient(135deg,var(--purple-soft),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;">🎵 تكرو</h1>
+    <p class="muted">لوحة التحكم — سجّل دخولك</p>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="post" action="/login" class="stack">
+      <input type="password" name="password" placeholder="كلمة سر اللوحة" required autofocus>
+      <button type="submit">دخول</button>
+    </form>
+  </main>
+</body>
+</html>
